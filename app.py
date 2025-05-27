@@ -1,9 +1,13 @@
 from flask import Flask, render_template, request, send_file
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 import io
-import os
 import random
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Table, TableStyle, Image, Spacer
+from reportlab.lib import colors
 
 app = Flask(__name__)
 
@@ -87,24 +91,70 @@ def export():
     if not last_forecast or not last_input_data:
         return "No forecast data to export.", 400
 
-    months_input = [f"Month {i+1}" for i in range(len(last_input_data))]
-    months_forecast = [f"Forecast {i+1}" for i in range(len(last_forecast))]
-    months_all = months_input + months_forecast
+    # Generate the plot as an image in memory
+    plt.figure(figsize=(8, 4))
+    months_all = [f"Month {i+1}" for i in range(len(last_input_data))] + [f"Forecast {i+1}" for i in range(len(last_forecast))]
     values_all = last_input_data + last_forecast
 
-    df = pd.DataFrame({
-        "Month": months_all,
-        "Production": values_all
-    })
+    plt.plot(months_all, values_all, marker='o', color='#2980b9')
+    plt.title('Bar Soap Production Forecast')
+    plt.xlabel('Months')
+    plt.ylabel('Production Quantity')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
 
-    output = io.BytesIO()
-    df.to_excel(output, index=False, engine="openpyxl")
-    output.seek(0)
+    img_buffer = io.BytesIO()
+    plt.savefig(img_buffer, format='PNG')
+    plt.close()
+    img_buffer.seek(0)
 
-    return send_file(output, as_attachment=True,
-                     download_name="forecast_output.xlsx",
-                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # Create PDF in memory
+    pdf_buffer = io.BytesIO()
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
+    width, height = letter
+
+    # Title
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(40, height - 50, "Bar Soap Production Forecast")
+
+    # Insert the image (chart)
+    img = Image(img_buffer)
+    img_width = 480
+    img_height = 240
+    img.drawHeight = img_height
+    img.drawWidth = img_width
+    img.wrapOn(c, width, height)
+    img.drawOn(c, 60, height - 320)
+
+    # Table data
+    table_data = [["Month", "Production Quantity"]]
+    for m, v in zip(months_all, values_all):
+        table_data.append([m, v])
+
+    table = Table(table_data, colWidths=[200, 150])
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#2980b9")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+    ])
+    table.setStyle(style)
+
+    # Position the table below the image
+    table.wrapOn(c, width, height)
+    table_height = 20 * len(table_data)  # Approximate row height * number of rows
+    table.drawOn(c, 80, height - 350 - table_height)
+
+    c.showPage()
+    c.save()
+    pdf_buffer.seek(0)
+
+    return send_file(pdf_buffer, as_attachment=True,
+                     download_name="production_forecast.pdf",
+                     mimetype="application/pdf")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=False, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000, debug=True)
