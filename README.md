@@ -4,6 +4,9 @@ This project uses the **Frog Leap Algorithm (FLA)**, a metaheuristic optimizatio
 
 ---
 
+<img width="888" alt="frogleap" src="https://github.com/user-attachments/assets/81052195-4b4f-47b6-a998-652e9f311f6d" />
+
+
 ## 🔍 Problem Statement
 
 You are given past monthly production data from a Bar Soap manufacturing company. Your task is to **predict/forecast** the production quantity for the next 5 months using the **Frog Leap Algorithm**.
