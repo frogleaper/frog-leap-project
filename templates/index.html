@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bar Soap Production Forecast</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #2980b9;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        main {
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin-top: 0;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 80%;
+            max-width: 500px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1c6690;
+        }
+        #exportBtn {
+            margin-top: 10px;
+            display: none;
+            background: #27ae60;
+        }
+        canvas {
+            max-width: 100%;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>ʙᴀʀ ꜱᴏᴀᴘ ᴘʀᴏᴅᴜᴄᴛɪᴏɴ ꜰᴏʀᴇᴄᴀꜱᴛ
+        </h1>
+        <p>​🇨​​🇭​​🇮​​🇧​​🇺​​🇮​​🇰​​🇪​ ​🇴​​🇷​​🇦​​🇪​​🇰​​🇼​​🇺​​🇴​​🇹​​🇺 ​- ᴘᴏᴡᴇʀᴇᴅ ʙʏ ꜰʀᴏɢ ʟᴇᴀᴘ ᴀʟɢᴏʀɪᴛʜᴍ
+        </p>
+    </header>
+    <main>
+        <form id="forecastForm">
+            <label for="dataInput">Enter previous 10 monthly productions (comma-separated):</label><br><br>
+            <input type="text" id="dataInput" value="1020, 1100, 1080, 1150, 1200, 1180, 1250, 1300, 1290, 1350" required />
+            <button type="submit">Generate Forecast</button>
+        </form>
+
+        <button id="exportBtn">Download Excel</button>
+        <canvas id="forecastChart" height="100"></canvas>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const form = document.getElementById('forecastForm');
+        const chartCanvas = document.getElementById('forecastChart');
+        const exportBtn = document.getElementById('exportBtn');
+        let chart;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('dataInput').value;
+            const response = await fetch('/forecast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input })
+            });
+            const result = await response.json();
+
+            if (chart) chart.destroy();
+
+            chart = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: [...result.original.map((_, i) => `Month ${i + 1}`),
+                             ...result.forecast.map((_, i) => `Forecast ${i + 1}`)],
+                    datasets: [{
+                        label: 'Production',
+                        data: [...result.original, ...result.forecast],
+                        borderColor: '#2980b9',
+                        backgroundColor: 'rgba(41, 128, 185, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true }
+                    }
+                }
+            });
+
+            // Show export button
+            exportBtn.style.display = 'inline-block';
+        });
+
+        exportBtn.addEventListener('click', () => {
+            window.location.href = '/export';
+        });
+    </script>
+</body>
+</html>
